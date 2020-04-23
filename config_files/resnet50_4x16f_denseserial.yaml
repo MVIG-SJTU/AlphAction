@@ -1,0 +1,60 @@
+MODEL:
+  WEIGHT: "data/models/aia_models/resnet50_4x16f_denseserial.pth"
+  BACKBONE:
+    CONV_BODY: "Slowfast-Resnet50"
+    FROZEN_BN: True
+    SLOWFAST:
+      BETA: 0.125
+      LATERAL: "tconv"
+      SLOW:
+        ACTIVE: True
+        CONV3_NONLOCAL: False
+        CONV4_NONLOCAL: False
+      FAST:
+        ACTIVE: True
+        CONV3_NONLOCAL: False
+        CONV4_NONLOCAL: False
+  NONLOCAL:
+    USE_ZERO_INIT_CONV: False
+    BN_INIT_GAMMA: 0.0
+    FROZEN_BN: True
+  ROI_ACTION_HEAD:
+    FEATURE_EXTRACTOR: "2MLPFeatureExtractor"
+    POOLER_TYPE: "align3d"
+    MEAN_BEFORE_POOLER: True
+    POOLER_RESOLUTION: 7
+    POOLER_SCALE: 0.0625
+    POOLER_SAMPLING_RATIO: 0
+    NUM_CLASSES: 80
+    PROPOSAL_PER_CLIP: 10
+    DROPOUT_RATE: 0.2
+INPUT:
+  FRAME_NUM: 64
+  FRAME_SAMPLE_RATE: 1
+  TAU: 16
+  ALPHA: 8
+IA_STRUCTURE:
+  ACTIVE: True
+  STRUCTURE: "dense"
+  DROPOUT: 0.2
+  FUSION: "add"
+  TEMPORAL_POSITION: True
+  USE_ZERO_INIT_CONV: True
+  LAYER_NORM: True
+  MAX_PERSON: 25
+  MAX_OBJECT: 5
+  MAX_PER_SEC: 5
+  DIM_INNER: 1024
+  DIM_OUT: 2304
+  I_BLOCK_LIST: ["P", "O", "M", "P", "O", "M"]
+DATASETS:
+  TRAIN: ("ava_video_train_v2.2",)
+  TEST: ("ava_video_val_v2.2",)
+DATALOADER:
+  NUM_WORKERS: 4
+  SIZE_DIVISIBILITY: 16
+TEST:
+  BOX_THRESH: 0.8
+  ACTION_THRESH: 0.
+  VIDEOS_PER_BATCH: 16
+OUTPUT_DIR: "data/output/resnet50_4x16f_denseserial"
