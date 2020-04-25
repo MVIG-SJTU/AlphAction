@@ -6,7 +6,7 @@ model on AVA dataset.**
 
 This project is the official implementation of paper 
 [Asynchronous Interaction Aggregation for Action Detection](https://arxiv.org/abs/2004.07485), authored
-by Jiajun Tang*, Jin Xia* (equal contribution), Xinzhi Mu, Bo Pang, 
+by Jiajun Tang*, Jin Xia* (equal contribution), Xinzhi Mu, [Bo Pang](https://bopang1996.github.io/), 
 [Cewu Lu](http://mvig.sjtu.edu.cn/) (corresponding author). 
 
 <br/>
