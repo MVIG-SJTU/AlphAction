@@ -7,7 +7,7 @@ model on AVA dataset.**
 This project is the official implementation of paper 
 [Asynchronous Interaction Aggregation for Action Detection](https://arxiv.org/abs/2004.07485), authored
 by Jiajun Tang*, Jin Xia* (equal contribution), Xinzhi Mu, [Bo Pang](https://bopang1996.github.io/), 
-[Cewu Lu](http://mvig.sjtu.edu.cn/) (corresponding author). 
+[Cewu Lu](http://mvig.sjtu.edu.cn/) (corresponding author). It is now accepted by **ECCV 2020**!
 
 <br/>
 <div align="center">
@@ -102,10 +102,10 @@ If this project helps you in your research or project, please cite
 this paper:
 
 ```
-@article{tang2020asynchronous,
+@inproceedings{tang2020asynchronous,
   title={Asynchronous Interaction Aggregation for Action Detection},
   author={Tang, Jiajun and Xia, Jin and Mu, Xinzhi and Pang, Bo and Lu, Cewu},
-  journal={arXiv preprint arXiv:2004.07485},
+  booktitle={Proceedings of the European conference on computer vision (ECCV)},
   year={2020}
 }
 ```
