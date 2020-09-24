@@ -160,28 +160,28 @@ class VideoDetectionLoader(object):
                     self.wait_and_put(self.action_queue, ("Done", self.videoinfo["frameSize"]))
                     #self.wait_till_empty(self.action_queue)
                     #self.wait_till_empty(self.track_queue)
-                    print("Wait for feature preprocess")
 
                     # This process needs to be finished after the predictor process
                     # Otherwise, it will cause FileNotFoundError, if predictor is
                     # overwhelmed
-                    cur_process = 0
-                    for j in tqdm(range(int(last_millis) - self.start_mill)):
-                        if self.stopped:
-                            break
-
-                        if j <= cur_process:
-                            continue
-                        else:
-                            predictor_process = self.predictor_process.value
-                            if predictor_process == -1:
-                                cur_process = last_millis + 1 - self.start_mill
-                            else:
-                                cur_process = predictor_process - self.start_mill
+                    predictor_process = self.predictor_process.value
+                    if predictor_process != -1:
+                        tqdm.write("Tracking finished. Showing feature extraction progress bar [ ready length / total length ](in msec).")
+                        initial = predictor_process - self.start_mill
+                        pbar = tqdm(total=int(last_millis)-self.start_mill, initial=initial, desc="Feature Extraction")
+                        last_pos = initial
+                        while predictor_process != -1:
+                            pbar.update(predictor_process-last_pos)
+                            if self.stopped:
+                                break
+                            last_pos = predictor_process
+                            # try not to read shared value too frequent
                             sleep(0.1)
+                            predictor_process = self.predictor_process.value
+                        pbar.update(int(last_millis)-last_pos)
+                        pbar.close()
 
                     stream.release()
-                    print("End of video loader")
                     return
 
                 # expected frame shape like (1,3,h,w) or (3,h,w)
@@ -238,7 +238,7 @@ class VideoDetectionLoader(object):
             input = (frame, cur_millis, boxes, scores, ids)
 
             # Passing these information to AVAPredictorWorker
-            self.action_queue.put((input, self.videoinfo["frameSize"]))
+            self.wait_and_put(self.action_queue, (input, self.videoinfo["frameSize"]))
 
             # Only return the tracking results to main thread
             self.wait_and_put(self.track_queue, (orig_img, boxes, scores, ids))

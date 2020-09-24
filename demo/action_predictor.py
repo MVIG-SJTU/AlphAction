@@ -1,20 +1,22 @@
 import copy
 from itertools import count
-from AlphAction.structures.bounding_box import BoxList
+from alphaction.structures.bounding_box import BoxList
 import numpy as np
 import queue
 from tqdm import tqdm
 
 import torch
-from AlphAction.config import cfg as base_cfg
-from AlphAction.modeling.detector import build_detection_model
-from AlphAction.utils.checkpoint import ActionCheckpointer
-from AlphAction.dataset.transforms import video_transforms as T
-from AlphAction.dataset.transforms import object_transforms as OT
-from AlphAction.structures.memory_pool import MemoryPool
-from AlphAction.dataset.collate_batch import batch_different_videos
+from alphaction.config import cfg as base_cfg
+from alphaction.modeling.detector import build_detection_model
+from alphaction.utils.checkpoint import ActionCheckpointer
+from alphaction.dataset.transforms import video_transforms as T
+from alphaction.dataset.transforms import object_transforms as OT
+from alphaction.structures.memory_pool import MemoryPool
+from alphaction.dataset.collate_batch import batch_different_videos
+from alphaction.utils.IA_helper import has_memory, has_object
 from video_detection_loader import VideoDetectionLoader
 from detector.apis import get_detector
+from bisect import bisect_right
 import torch.multiprocessing as mp
 
 
@@ -41,7 +43,7 @@ class AVAPredictor(object):
         cfg = base_cfg.clone()
         cfg.merge_from_file(cfg_file_path)
         cfg.MODEL.WEIGHT = model_weight_url
-        cfg.IA_STRUCTURE.MEMORY_RATE *= detect_rate
+        cfg.MODEL.IA_STRUCTURE.MEMORY_RATE *= detect_rate
         if common_cate:
             cfg.MODEL.ROI_ACTION_HEAD.NUM_CLASSES = 15
             cfg.MODEL.ROI_ACTION_HEAD.NUM_PERSON_MOVEMENT_CLASSES = 6
@@ -53,13 +55,19 @@ class AVAPredictor(object):
         self.model = build_detection_model(cfg)
         self.model.eval()
         self.model.to(device)
+        self.has_memory = has_memory(cfg.MODEL.IA_STRUCTURE)
+        self.mem_len = cfg.MODEL.IA_STRUCTURE.LENGTH
+        self.mem_rate = cfg.MODEL.IA_STRUCTURE.MEMORY_RATE
+        self.has_object = has_object(cfg.MODEL.IA_STRUCTURE)
 
-        save_dir = cfg.OUTPUT_DIR
-        checkpointer = ActionCheckpointer(cfg, self.model, save_dir=save_dir)
+        checkpointer = ActionCheckpointer(cfg, self.model)
         self.mem_pool = MemoryPool()
         self.object_pool = MemoryPool()
-        self.timestamps = []
+        self.mem_timestamps = []
+        self.obj_timestamps = []
+        print("Loading action model weight from {}.".format(cfg.MODEL.WEIGHT))
         _ = checkpointer.load(cfg.MODEL.WEIGHT)
+        print("Action model weight successfully loaded.")
 
         self.transforms, self.person_transforms, self.object_transforms = self.build_transform()
 
@@ -85,7 +93,7 @@ class AVAPredictor(object):
         person_transforms = OT.Resize()
 
         object_transform = OT.Compose([
-            OT.PickTop(cfg.IA_STRUCTURE.MAX_OBJECT),
+            OT.PickTop(cfg.MODEL.IA_STRUCTURE.MAX_OBJECT),
             OT.Resize(),
         ])
 
@@ -105,23 +113,71 @@ class AVAPredictor(object):
             timestamp(int): The timestamp of center frame. In seconds
             transform_randoms(dict): The random transforms
         """
+        if self.mem_timestamps:
+            assert timestamp > self.mem_timestamps[-1], "features are expected to be updated in order."
+
         slow_clips = batch_different_videos([video_data[0]], self.cfg.DATALOADER.SIZE_DIVISIBILITY)
         fast_clips = batch_different_videos([video_data[1]], self.cfg.DATALOADER.SIZE_DIVISIBILITY)
         slow_clips = slow_clips.to(self.device)
         fast_clips = fast_clips.to(self.device)
         boxes = [self.person_transforms(boxes, transform_randoms).to(self.device)]
         if objects is not None:
-            objects = self.object_transforms(objects, transform_randoms).to(self.device)
-        objects = [objects]
+            objects = [self.object_transforms(objects, transform_randoms).to(self.device)]
 
         with torch.no_grad():
             feature = self.model(slow_clips, fast_clips, boxes, objects, part_forward=0)
-            person_feature = [ft.to(self.cpu_device) for ft in feature[0]]
-            object_feature = [ft.to(self.cpu_device) for ft in feature[1]]
+            person_feature = [ft.to(self.cpu_device) for ft in feature[0]][0]
+            if feature[1] is None:
+                object_feature = None
+            else:
+                object_feature = [ft.to(self.cpu_device) for ft in feature[1]][0]
 
-        self.mem_pool["SingleVideo", timestamp] = person_feature[0]
-        self.object_pool["SingleVideo", timestamp] = object_feature[0]
-        self.timestamps.append(timestamp)
+        self.mem_pool["SingleVideo", timestamp] = person_feature
+        self.mem_timestamps.append(timestamp)
+        if object_feature is not None:
+            self.object_pool["SingleVideo", timestamp] = object_feature
+            self.obj_timestamps.append(timestamp)
+
+    def check_ready_timestamp(self):
+        if self.mem_timestamps:
+            last_timestamp = self.mem_timestamps[-1]
+            if self.has_memory:
+                before, after = self.mem_len
+                last_ready = last_timestamp - after * self.mem_rate
+                ready_num = bisect_right(self.mem_timestamps, last_ready)
+                return ready_num
+            else:
+                return len(self.mem_timestamps)
+        else:
+            return 0
+
+    def clear_feature(self, timestamp=None):
+        # this function is usually called after compute_prediction
+        # to clear features that will not be used in the future.
+        # timestamp should be the consistent with the one parsed into compute_prediction
+        # note: after this function is called, predictions for clip with timestamp larger than the argument will be unavailable.
+        if timestamp is None:
+            self.mem_pool = MemoryPool()
+            self.object_pool = MemoryPool()
+            self.mem_timestamps = []
+            self.obj_timestamps = []
+            return
+
+        if self.has_memory:
+            before, after = self.mem_len
+            last_unused = timestamp - before * self.mem_rate
+        else:
+            last_unused = timestamp
+
+        mem_to_release = bisect_right(self.mem_timestamps, last_unused)
+        for t in self.mem_timestamps[:mem_to_release]:
+            del self.mem_pool["SingleVideo", t]
+        self.mem_timestamps = self.mem_timestamps[mem_to_release:]
+
+        obj_to_release = bisect_right(self.obj_timestamps, timestamp)
+        for t in self.obj_timestamps[:obj_to_release]:
+            del self.object_pool["SingleVideo", t]
+        self.obj_timestamps = self.obj_timestamps[obj_to_release:]
 
     def compute_prediction(self, timestamp, vid_size):
         """Compute the actions score at a timestamp
@@ -140,14 +196,18 @@ class AVAPredictor(object):
         Returns:
             prediction(BoxList): The prediction results with boxes and scores.
         """
-        current_feat_p = self.mem_pool["SingleVideo", timestamp].to(self.device)
-        current_feat_o = self.object_pool["SingleVideo", timestamp].to(self.device)
+        current_feat_p = [self.mem_pool["SingleVideo", timestamp].to(self.device)]
+        if ("SingleVideo", timestamp) in self.object_pool:
+            current_feat_o = [self.object_pool["SingleVideo", timestamp].to(self.device)]
+        else:
+            current_feat_o = None
+
         extras = dict(
             person_pool=self.mem_pool,
             movie_ids=["SingleVideo"],
             timestamps=[timestamp],
-            current_feat_p=[current_feat_p],
-            current_feat_o=[current_feat_o],
+            current_feat_p=current_feat_p,
+            current_feat_o=current_feat_o,
         )
 
         with torch.no_grad():
@@ -173,11 +233,6 @@ class AVAPredictorWorker(object):
 
         self.realtime = cfg.realtime
 
-        # Object Detector
-        object_cfg = copy.deepcopy(cfg)
-        object_cfg.detector = "yolo"
-        self.coco_det = get_detector(object_cfg)
-
         # Action Predictor
         cfg_file_path = cfg.cfg_path
         model_weight_url = cfg.weight_path
@@ -188,6 +243,14 @@ class AVAPredictorWorker(object):
             cfg.common_cate,
             cfg.device,
         )
+
+        # Object Detector
+        if self.ava_predictor.has_object:
+            object_cfg = copy.deepcopy(cfg)
+            object_cfg.detector = "yolo"
+            self.coco_det = get_detector(object_cfg)
+        else:
+            self.coco_det = None
 
         self.track_queue = mp.Queue(maxsize=1)
         self.input_queue = mp.Queue(maxsize=512)
@@ -280,19 +343,23 @@ class AVAPredictorWorker(object):
         '''
 
         empty_flag = False
+        pred_num_cnt = 0
 
         for i in count():
             if self.stopped:
-                print("Avaworker stopped")
+                # tqdm.write("Avaworker stopped")
                 return
             # if all video data have been processed and compute_prediction() has been called
             # compute predictions
             if self.task_done == True and empty_flag:
-                print("The input queue is empty. Start working on prediction")
-                for center_timestamp, video_size, ids in tqdm(self.timestamps):
-                    predictions = self.ava_predictor.compute_prediction(center_timestamp//self.interval, video_size)
+                tqdm.write("Feature extraction finished. Now showing action prediction progress bar [ ready point count / total prediction point ]")
+                for center_timestamp, video_size, ids in tqdm(self.timestamps[pred_num_cnt:], initial=pred_num_cnt, total=len(self.timestamps), desc="Action Prediction"):
+                    feature_index = center_timestamp // self.interval
+                    predictions = self.ava_predictor.compute_prediction(feature_index, video_size)
                     self.output_queue.put((predictions, center_timestamp, ids))
-                print("Prediction is done.")
+                    self.ava_predictor.clear_feature(feature_index)
+                self.ava_predictor.clear_feature()
+                tqdm.write("Action prediction is done.")
                 self.output_queue.put("done")
                 self._task_done.value = False
 
@@ -325,36 +392,51 @@ class AVAPredictorWorker(object):
                 if person_boxes is None or len(person_boxes) == 0:
                     continue
 
-                kframe = self.frame_stack[center_index]
-                center_timestamp = int(center_timestamp)
+                if self.coco_det is not None:
+                    kframe = self.frame_stack[center_index]
+                    center_timestamp = int(center_timestamp)
+
+                    kframe_data = self.coco_det.image_preprocess(kframe)
+                    im_dim_list_k = kframe.shape[1], kframe.shape[0]
+                    im_dim_list_k = torch.FloatTensor(im_dim_list_k).repeat(1, 2)
+                    dets = self.coco_det.images_detection(kframe_data, im_dim_list_k)
+                    if isinstance(dets, int) or dets.shape[0] == 0:
+                        obj_boxes = torch.zeros((0,4))
+                    else:
+                        obj_boxes = dets[:, 1:5].cpu()
+                    obj_boxes = BoxList(obj_boxes, video_size, "xyxy").clip_to_image()
+                else:
+                    obj_boxes = None
 
                 video_data, _, transform_randoms = self.vid_transforms(frame_arr, None)
 
-                kframe_data = self.coco_det.image_preprocess(kframe)
-                im_dim_list_k = kframe.shape[1], kframe.shape[0]
-                im_dim_list_k = torch.FloatTensor(im_dim_list_k).repeat(1, 2)
-                dets = self.coco_det.images_detection(kframe_data, im_dim_list_k)
-                if isinstance(dets, int) or dets.shape[0] == 0:
-                    obj_boxes = torch.zeros((0,4))
-                else:
-                    obj_boxes = dets[:, 1:5].cpu()
-                obj_boxes = BoxList(obj_boxes, video_size, "xyxy").clip_to_image()
-
                 person_box = BoxList(person_boxes, video_size, "xyxy").clip_to_image()
+
+                feature_index = center_timestamp // self.interval
 
                 self.ava_predictor.update_feature(video_data,
                                                   person_box,
                                                   obj_boxes,
-                                                  center_timestamp // self.interval,
+                                                  feature_index,
                                                   transform_randoms)
 
                 if self.realtime:
-                    predictions = self.ava_predictor.compute_prediction(center_timestamp // self.interval, video_size)
+                    predictions = self.ava_predictor.compute_prediction(feature_index, video_size)
                     #print(len(predictions.get_field("scores")), person_ids)
                     self.output_queue.put((predictions, center_timestamp, person_ids[:, 0]))
+                    self.ava_predictor.clear_feature(feature_index)
+                    pred_num_cnt += 1
                 else:
                     # if not realtime, timestamps will be saved and the predictions will be computed later.
                     self.timestamps.append((center_timestamp, video_size, person_ids[:, 0]))
+                    ready_num = self.ava_predictor.check_ready_timestamp()
+                    for timestamp_idx in range(pred_num_cnt, pred_num_cnt + ready_num):
+                        center_timestamp, video_size, ids = self.timestamps[timestamp_idx]
+                        feature_index = center_timestamp // self.interval
+                        predictions = self.ava_predictor.compute_prediction(feature_index, video_size)
+                        self.output_queue.put((predictions, center_timestamp, ids))
+                        self.ava_predictor.clear_feature(feature_index)
+                    pred_num_cnt = pred_num_cnt + ready_num
 
     @property
     def stopped(self):

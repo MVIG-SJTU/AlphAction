@@ -141,9 +141,11 @@ def main():
     torch.multiprocessing.set_sharing_strategy('file_system')
 
     ava_predictor_worker = AVAPredictorWorker(args)
+    pred_done_flag = False
 
+    print("Showing tracking progress bar (in fps). Other processes are running in the background.")
     try:
-        for i in tqdm(count()):
+        for i in tqdm(count(), desc="Tracker Progress", unit=" frame"):
             with torch.no_grad():
                 (orig_img, boxes, scores, ids) = ava_predictor_worker.read_track()
 
@@ -159,23 +161,30 @@ def main():
                         break
                 else:
                     video_writer.send_track((boxes, ids))
+                    while not pred_done_flag:
+                        result = ava_predictor_worker.read()
+                        if result is None:
+                            break
+                        elif result == "done":
+                            pred_done_flag = True
+                        else:
+                            video_writer.send(result)
     except KeyboardInterrupt:
         print("Keyboard Interrupted")
 
     if not args.realtime:
         video_writer.send_track("DONE")
-        while True:
+        while not pred_done_flag:
             result = ava_predictor_worker.read()
             if result is None:
                 sleep(0.1)
-                continue
-            if result == "done":
-                break
-
-            video_writer.send(result)
+            elif result == "done":
+                pred_done_flag = True
+            else:
+                video_writer.send(result)
 
         video_writer.send("DONE")
-        print("Wait for writer process to finish...")
+        tqdm.write("Showing video writer progress (in fps).")
         video_writer.progress_bar(i)
 
     video_writer.close()

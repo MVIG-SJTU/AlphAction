@@ -249,7 +249,7 @@ class AVAVisualizer(object):
         self.frame_queue.put("DONE")
         self.frame_queue.join()
         self.frame_queue.close()
-        print("load frame closed")
+        # tqdm.write("load frame closed")
 
     def _wirte_frame(self, output_path):
         width = self.vid_info["width"]
@@ -311,7 +311,7 @@ class AVAVisualizer(object):
             self.done_queue.put(True)
 
         out_vid.release()
-        print("write frame closed")
+        tqdm.write("The output video has been written to the disk.")
 
     def hou_min_sec(self, total_millis):
         total_millis = int(total_millis)
@@ -356,7 +356,7 @@ class AVAVisualizer(object):
         # Update action_dictionary
         if scores is not None:
             for score, id in zip(scores, ids):
-                show_idx = torch.nonzero(score >= self.confidence_threshold).squeeze(1)
+                show_idx = torch.nonzero(score >= self.confidence_threshold, as_tuple=False).squeeze(1)
                 captions = []
                 bg_colors = []
 
@@ -454,7 +454,7 @@ class AVAVisualizer(object):
             draw.rectangle(box.tolist(), outline=self.box_color + (255,), width=self.box_width)
 
         for box, score in zip(bboxes, scores):
-            show_idx = torch.nonzero(score >= self.confidence_threshold).squeeze(1)
+            show_idx = torch.nonzero(score >= self.confidence_threshold, as_tuple=False).squeeze(1)
             captions = []
             bg_colors = []
             for category_id in show_idx:
@@ -525,7 +525,7 @@ class AVAVisualizer(object):
         while not self.done_queue.empty():
             _ = self.done_queue.get()
             cnt += 1
-        pbar = tqdm(total=total, initial=cnt)
+        pbar = tqdm(total=total, initial=cnt, desc="Video Writer", unit=" frame")
         # update bar
         while cnt < total:
             _ = self.done_queue.get()
