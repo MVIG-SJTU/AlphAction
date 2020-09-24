@@ -441,7 +441,7 @@ def non_max_suppression(prediction, conf_thres=0.5, nms_thres=0.4, method=-1):
         # Get score and class with highest confidence
 
         v = pred[:, 4] > conf_thres
-        v = v.nonzero().squeeze()
+        v = v.nonzero(as_tuple=False).squeeze()
         if len(v.shape) == 0:
             v = v.unsqueeze(0)
 
@@ -479,7 +479,7 @@ def return_torch_unique_index(u, uv):
     n = uv.shape[1]  # number of columns
     first_unique = torch.zeros(n, device=u.device).long()
     for j in range(n):
-        first_unique[j] = (uv[:, j:j + 1] == u).all(0).nonzero()[0]
+        first_unique[j] = (uv[:, j:j + 1] == u).all(0).nonzero(as_tuple=False)[0]
 
     return first_unique
 

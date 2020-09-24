@@ -12,9 +12,6 @@ from torch.utils.cpp_extension import CUDAExtension
 from Cython.Build import cythonize
 import platform
 
-requirements = ["torch", "torchvision"]
-
-
 def make_cython_ext(name, module, sources):
     extra_compile_args = None
     if platform.system() != 'Windows':
@@ -49,7 +46,7 @@ def make_cuda_ext(name, module, sources):
 
 def get_extensions():
     this_dir = os.path.dirname(os.path.abspath(__file__))
-    extensions_dir = os.path.join(this_dir, "csrc")
+    extensions_dir = os.path.join(this_dir, "alphaction/csrc")
 
     main_file = glob.glob(os.path.join(extensions_dir, "*.cpp"))
     source_cpu = glob.glob(os.path.join(extensions_dir, "cpu", "*.cpp"))
@@ -66,11 +63,11 @@ def get_extensions():
         sources += source_cuda
         define_macros += [("WITH_CUDA", None)]
         extra_compile_args["nvcc"] = [
+            "-O3",
             "-DCUDA_HAS_FP16=1",
             "-D__CUDA_NO_HALF_OPERATORS__",
             "-D__CUDA_NO_HALF_CONVERSIONS__",
             "-D__CUDA_NO_HALF2_OPERATORS__",
-            "--expt-relaxed-constexpr",
         ]
 
     sources = [os.path.join(extensions_dir, s) for s in sources]
@@ -79,7 +76,7 @@ def get_extensions():
 
     ext_modules = [
         extension(
-            "AlphAction.custom_ext",
+            "alphaction._custom_cuda_ext",
             sources,
             include_dirs=include_dirs,
             define_macros=define_macros,
@@ -105,9 +102,21 @@ def get_extensions():
 
 setup(
     name="alphaction",
+    author="yelantf",
+    url="https://github.com/MVIG-SJTU/AlphAction",
     ext_modules=get_extensions(),
     packages=find_packages(".", exclude=[
-        "config_files", "csrc", "demo", "gifs", "tools", "data",
+        "config_files", "demo", "gifs", "tools", "data",
     ]),
+    install_requires=[
+        "tqdm",
+        "yacs",
+        "opencv-python",
+        "tensorboardX",
+        "SciPy",
+        "matplotlib",
+        "cython-bbox",
+        "easydict",
+    ],
     cmdclass={"build_ext": torch.utils.cpp_extension.BuildExtension},
 )

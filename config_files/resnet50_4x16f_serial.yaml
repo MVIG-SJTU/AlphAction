@@ -1,5 +1,5 @@
 MODEL:
-  WEIGHT: "data/models/aia_models/resnet50_4x16f_serial.pth"
+  WEIGHT: "data/models/pretrained_models/SlowFast-ResNet50-4x16.pth"
   BACKBONE:
     CONV_BODY: "Slowfast-Resnet50"
     FROZEN_BN: True
@@ -28,30 +28,44 @@ MODEL:
     NUM_CLASSES: 80
     PROPOSAL_PER_CLIP: 10
     DROPOUT_RATE: 0.2
+  IA_STRUCTURE:
+    ACTIVE: True
+    DROPOUT: 0.2
+    FUSION: "add"
+    TEMPORAL_POSITION: True
+    USE_ZERO_INIT_CONV: True
+    LAYER_NORM: True
+    MAX_PERSON: 25
+    MAX_OBJECT: 5
+    MAX_PER_SEC: 5
+    DIM_OUT: 2304
+    DIM_INNER: 1024
+    I_BLOCK_LIST: [ "P", "O", "M", "P", "O", "M" ]
 INPUT:
   FRAME_NUM: 64
   FRAME_SAMPLE_RATE: 1
   TAU: 16
   ALPHA: 8
-IA_STRUCTURE:
-  ACTIVE: True
-  DROPOUT: 0.2
-  FUSION: "add"
-  TEMPORAL_POSITION: True
-  USE_ZERO_INIT_CONV: True
-  LAYER_NORM: True
-  MAX_PERSON: 25
-  MAX_OBJECT: 5
-  MAX_PER_SEC: 5
-  DIM_OUT: 2304
-  DIM_INNER: 1024
-  I_BLOCK_LIST: ["P", "O", "M", "P", "O", "M"]
+  SLOW_JITTER: True
+  COLOR_JITTER: True
 DATASETS:
   TRAIN: ("ava_video_train_v2.2",)
   TEST: ("ava_video_val_v2.2",)
 DATALOADER:
   NUM_WORKERS: 4
   SIZE_DIVISIBILITY: 16
+SOLVER:
+  BASE_LR: 0.0004
+  WARMUP_FACTOR: 0.25
+  BIAS_LR_FACTOR: 2
+  IA_LR_FACTOR: 10.0
+  WEIGHT_DECAY: 1e-7
+  STEPS: (70000, 90000)
+  WARMUP_ITERS: 2000
+  MAX_ITER: 110000
+  CHECKPOINT_PERIOD: 10000
+  EVAL_PERIOD: 10000
+  VIDEOS_PER_BATCH: 16
 TEST:
   BOX_THRESH: 0.8
   ACTION_THRESH: 0.

@@ -17,22 +17,18 @@ We recommend to setup the environment with Anaconda,
 the step-by-step installation script is shown below.
 
 ```bash
-conda create -n action_det python=3.7
-conda activate action_det
+conda create -n alphaction python=3.7
+conda activate alphaction
 
-conda install pytorch torchvision cudatoolkit=10.1 -c pytorch
+# install pytorch with the same cuda version as in your environment
+cuda_version=$(nvcc --version | grep -oP '(?<=release )[\d\.]*?(?=,)')
+conda install pytorch torchvision cudatoolkit=$cuda_version -c pytorch
+
 conda install av -c conda-forge
-conda install tqdm
-
-pip install yacs opencv-python tensorboardX
-
-######################
-# dependicies for demo
-conda install Cython SciPy matplotlib
-pip install cython-bbox easydict
-######################
+conda install cython
 
 git clone https://github.com/MVIG-SJTU/AlphAction.git
 cd AlphAction
-python setup.py build develop
+pip install -e .    # Other dependicies will be installed here
+
 ```

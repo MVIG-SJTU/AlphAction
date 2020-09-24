@@ -49,6 +49,8 @@ class Tracker(BaseDetector):
 
         self.kalman_filter = KalmanFilter()
 
+        self.load_model()
+
     def load_model(self):
         print('Loading tracking model..')
         self.model = Darknet(self.model_cfg, self.img_size, nID=14455)

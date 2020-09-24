@@ -2,15 +2,15 @@ import argparse
 import os
 
 import torch
-from AlphAction.config import cfg
-from AlphAction.dataset import make_data_loader
-from AlphAction.engine.inference import inference
-from AlphAction.modeling.detector import build_detection_model
-from AlphAction.utils.checkpoint import ActionCheckpointer
+from alphaction.config import cfg
+from alphaction.dataset import make_data_loader
+from alphaction.engine.inference import inference
+from alphaction.modeling.detector import build_detection_model
+from alphaction.utils.checkpoint import ActionCheckpointer
 from torch.utils.collect_env import get_pretty_env_info
-from AlphAction.utils.comm import synchronize, get_rank
-from AlphAction.utils.IA_helper import has_memory
-from AlphAction.utils.logger import setup_logger
+from alphaction.utils.comm import synchronize, get_rank
+from alphaction.utils.IA_helper import has_memory
+from alphaction.utils.logger import setup_logger
 #pytorch issuse #973
 import resource
 
@@ -44,7 +44,6 @@ def main():
         torch.distributed.init_process_group(
             backend="nccl", init_method="env://"
         )
-        synchronize()
 
     # Merge config file.
     cfg.merge_from_file(args.config_file)
@@ -53,7 +52,7 @@ def main():
 
     # Print experimental infos.
     save_dir = ""
-    logger = setup_logger("AlphAction", save_dir, get_rank())
+    logger = setup_logger("alphaction", save_dir, get_rank())
     logger.info("Using {} GPUs".format(num_gpus))
     logger.info(cfg)
 
@@ -71,7 +70,7 @@ def main():
 
     output_folders = [None] * len(cfg.DATASETS.TEST)
     dataset_names = cfg.DATASETS.TEST
-    mem_active = has_memory(cfg.IA_STRUCTURE)
+    mem_active = has_memory(cfg.MODEL.IA_STRUCTURE)
     if cfg.OUTPUT_DIR:
         for idx, dataset_name in enumerate(dataset_names):
             output_folder = os.path.join(cfg.OUTPUT_DIR, "inference", dataset_name)

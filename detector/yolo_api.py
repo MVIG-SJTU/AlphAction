@@ -132,7 +132,7 @@ class YOLODetector(BaseDetector):
         prediction = prediction * conf_mask
 
         try:
-            ind_nz = torch.nonzero(prediction[:,:,4]).transpose(0,1).contiguous()
+            ind_nz = torch.nonzero(prediction[:,:,4], as_tuple=False).transpose(0,1).contiguous()
         except:
             return 0
 
@@ -164,7 +164,7 @@ class YOLODetector(BaseDetector):
             image_pred = torch.cat(seq, 1)
 
             #Get rid of the zero entries
-            non_zero_ind =  (torch.nonzero(image_pred[:,4]))
+            non_zero_ind =  (torch.nonzero(image_pred[:,4], as_tuple=False))
 
             image_pred_ = image_pred[non_zero_ind.squeeze(),:].view(-1,7)
 
@@ -181,7 +181,7 @@ class YOLODetector(BaseDetector):
                     continue
                 #get the detections with one particular class
                 cls_mask = image_pred_*(image_pred_[:,-1] == cls).float().unsqueeze(1)
-                class_mask_ind = torch.nonzero(cls_mask[:,-2]).squeeze()
+                class_mask_ind = torch.nonzero(cls_mask[:,-2], as_tuple=False).squeeze()
 
                 image_pred_class = image_pred_[class_mask_ind].view(-1,7)
 
