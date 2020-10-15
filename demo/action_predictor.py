@@ -65,6 +65,7 @@ class AVAPredictor(object):
         self.object_pool = MemoryPool()
         self.mem_timestamps = []
         self.obj_timestamps = []
+        self.pred_pos = 0
         print("Loading action model weight from {}.".format(cfg.MODEL.WEIGHT))
         _ = checkpointer.load(cfg.MODEL.WEIGHT)
         print("Action model weight successfully loaded.")
@@ -145,9 +146,9 @@ class AVAPredictor(object):
                 before, after = self.mem_len
                 last_ready = last_timestamp - after * self.mem_rate
                 ready_num = bisect_right(self.mem_timestamps, last_ready)
-                return ready_num
+                return ready_num - self.pred_pos
             else:
-                return len(self.mem_timestamps)
+                return len(self.mem_timestamps) - self.pred_pos
         else:
             return 0
 
@@ -161,6 +162,7 @@ class AVAPredictor(object):
             self.object_pool = MemoryPool()
             self.mem_timestamps = []
             self.obj_timestamps = []
+            self.pred_pos = 0
             return
 
         if self.has_memory:
@@ -173,6 +175,8 @@ class AVAPredictor(object):
         for t in self.mem_timestamps[:mem_to_release]:
             del self.mem_pool["SingleVideo", t]
         self.mem_timestamps = self.mem_timestamps[mem_to_release:]
+        self.pred_pos -= mem_to_release
+        self.pred_pos = max(self.pred_pos, 0)
 
         obj_to_release = bisect_right(self.obj_timestamps, timestamp)
         for t in self.obj_timestamps[:obj_to_release]:
@@ -215,6 +219,8 @@ class AVAPredictor(object):
             output = [o.resize(vid_size).to(self.cpu_device) for o in output]
 
         prediction = output[0]
+
+        self.pred_pos += 1
 
         return prediction
 
