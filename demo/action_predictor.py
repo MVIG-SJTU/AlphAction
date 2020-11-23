@@ -272,12 +272,13 @@ class AVAPredictorWorker(object):
         self.extra_stack = []
         ava_cfg = self.ava_predictor.cfg
         self.frame_buffer_numbers = ava_cfg.INPUT.FRAME_NUM * ava_cfg.INPUT.FRAME_SAMPLE_RATE
+        self.center_index = self.frame_buffer_numbers // 2
 
         # detection interval should be 1 second like AVA,
         # one reason is that our model with memory feature is trained with that.
         # Since we may not be able to reach 25 fps, so the strategy here is based on the
         # number of frames. The duration of these frames may be varied.
-        self.last_milli = 0
+        self.last_milli = -2000
         self.detect_rate = cfg.detect_rate
         self.interval = 1000//self.detect_rate
 
@@ -388,18 +389,23 @@ class AVAPredictorWorker(object):
             self.extra_stack = self.extra_stack[-self.frame_buffer_numbers:]
 
             # Predict action once per interval
-            if len(self.frame_stack) >= self.frame_buffer_numbers and cur_millis > self.last_milli + self.interval:
+            if len(self.frame_stack) >= self.frame_buffer_numbers:
+
+                center_timestamp, person_boxes, person_scores, person_ids = self.extra_stack[self.center_index]
+                # use center_timestamp instead cur_millis to check if we should update feature,
+                # because the step of timestamp is not fixed.
+                if center_timestamp < self.last_milli + self.interval:
+                    continue
+                self.last_milli = center_timestamp
+
                 if not self.realtime:
                     self.predictor_process.value = int(cur_millis)
-                self.last_milli = cur_millis
                 frame_arr = np.stack(self.frame_stack)[..., ::-1]
-                center_index = self.frame_buffer_numbers // 2
-                center_timestamp, person_boxes, person_scores, person_ids = self.extra_stack[center_index]
                 if person_boxes is None or len(person_boxes) == 0:
                     continue
 
                 if self.coco_det is not None:
-                    kframe = self.frame_stack[center_index]
+                    kframe = self.frame_stack[self.center_index]
                     center_timestamp = int(center_timestamp)
 
                     kframe_data = self.coco_det.image_preprocess(kframe)
