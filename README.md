@@ -11,11 +11,11 @@ by Jiajun Tang*, Jin Xia* (equal contribution), Xinzhi Mu, [Bo Pang](https://bop
 
 <br/>
 <div align="center">
-  <img  src="https://user-images.githubusercontent.com/22748802/94115535-71fc9580-fe7c-11ea-98af-d8e9a8a2de82.gif" width=416 alt="demo1">
-  <img  src="https://user-images.githubusercontent.com/22748802/94115605-8ccf0a00-fe7c-11ea-8855-ab84232612a0.gif" width=416 alt="demo2">
+  <img  src="https://user-images.githubusercontent.com/22748802/94115535-71fc9580-fe7c-11ea-98af-d8e9a8a2de82.gif" width="45%" alt="demo1">
+  <img  src="https://user-images.githubusercontent.com/22748802/94115605-8ccf0a00-fe7c-11ea-8855-ab84232612a0.gif" width="45%" alt="demo2">
 </div>
 <div align="center">
-  <img  src="https://user-images.githubusercontent.com/22748802/94115715-b12ae680-fe7c-11ea-8180-8e3d7f57a4bb.gif" width=836 alt="demo3">
+  <img  src="https://user-images.githubusercontent.com/22748802/94115715-b12ae680-fe7c-11ea-8180-8e3d7f57a4bb.gif" width="90%" alt="demo3">
 </div>
 <br/>
 
@@ -31,7 +31,7 @@ You need first to install this project, please check [INSTALL.md](INSTALL.md)
 ## Data Preparation
 
 To do training or inference on AVA dataset, please check [DATA.md](DATA.md)
-for data preparation instructions.
+for data preparation instructions. If you have difficulty accessing Google Drive, you can instead find most files (including models) on Baidu NetDisk([[link]](https://pan.baidu.com/s/1MmYiZ4Vyeznke5_3L4WjYw), code: `smti`).
 
 ## Model Zoo
 

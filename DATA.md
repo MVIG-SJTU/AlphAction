@@ -2,7 +2,7 @@
 
 ### Easy Version
 
-1. Download the tar.gz file from [[here]](https://drive.google.com/open?id=1k0cHMr5DF4cyd3x_0GoMpEXO9M03AdD6). 
+1. Download the tar.gz file from [[here]](https://pan.baidu.com/s/1UrflK4IgiVbVBOP5fDHdKA) with code `q5v5`. 
 
 2. run following commands to unzip the file and create a 
 symbolic link to the extracted files.
@@ -96,10 +96,6 @@ process raw movies.
     |  |  |_ <MOVIE-ID-N>
     |  |  |  |_ [895~1805].jpg
     ```
-   
-   This processing could take a long time, so we just provide the processed
-   key frames and clips for downloading([keyframes](https://drive.google.com/open?id=18Tm-LBUHtkntWZ7rmKllYJz1ZrOqQ3Ez), 
-   [clips](https://drive.google.com/open?id=1n2PuZrk3fD6r7gt_h-8CTWvWSYdXjBKu)). 
 
 5. **Convert Annotations.** Our codes use COCO-style anntations, 
 so we have to convert official csv annotations into COCO json format
@@ -120,8 +116,8 @@ by running following commands.
     as follows, `*_min.json` means that the json file has no space indent.
     
     Alternatively, you could just download our json files 
-    here([train](https://drive.google.com/open?id=1UaSaMm1b9SBVnBXqlgVOlP4P89TXXvqt), 
-    [val](https://drive.google.com/open?id=1iYQKIsVTetjnVgxzP3QmMY3JqYBeO6uK)).
+    here([train](https://drive.google.com/file/d/1BLCMkcnWusaqhHNrDjxzTOMFNT_W-rbr/view?usp=sharing), 
+    [val](https://drive.google.com/file/d/1A9_ywPZA4kr3qM8e27yvxkAF5idcQRme/view?usp=sharing)).
    
     ```
     AVA/
@@ -133,10 +129,10 @@ by running following commands.
     ```
    
 6. **Detect Persons and Objects.** The predicted person boxes 
-for AVA validation set can be donwloaded [[here]](https://drive.google.com/open?id=1hi84yVOWseALM3DadYLrj6ppWFu1dooX).
+for AVA validation set can be donwloaded [[here]](https://drive.google.com/file/d/1XnPoJqTVtBVF3XxpFtvDTZQ6EFW8b2S4/view?usp=sharing).
 Note that we only use ground truth person boxes for training.
-The object boxes files are also available for download([train](https://drive.google.com/open?id=1E2VKboLSS0vcZRECIcDNjNLIl5sdHmWa), 
-[val](https://drive.google.com/open?id=10XorUJzUUyLJZ2h9tFfR8rNif1Itzkcx)).
+The object boxes files are also available for download([train](https://drive.google.com/file/d/17nH47vH4q9fCs-fs4lQ9QV1POGWzQloh/view?usp=sharing), 
+[val](https://drive.google.com/file/d/1DcXdaSkwR5Ga50kowe1OEbSQy3AKp57L/view?usp=sharing)).
 These files should be placed at following locations.
 
     ```
@@ -149,7 +145,7 @@ These files should be placed at following locations.
 
     For person detector, we first trained it on MSCOCO 
     keypoint dataset and then fine-tuned it on AVA dataset. 
-    The final model weight is available [[here]](https://drive.google.com/open?id=14eVMRes9bJwn7hN0CVDa_tjaUTfGWoem).
+    The final model weight is available [[here]](https://drive.google.com/file/d/1T6kx1AJe0IA-aqrpLyeRblq2uYlaopow/view?usp=sharing).
     
     For object detector, we use the model provided in 
     [maskrcnn-benchmark repository](https://download.pytorch.org/models/maskrcnn/e2e_faster_rcnn_X_101_32x8d_FPN_1x.pth), 
