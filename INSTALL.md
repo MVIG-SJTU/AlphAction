@@ -3,7 +3,7 @@
 **Requirements**
 
 - Python >= 3.5
-- [Pytorch](https://pytorch.org/) >= 1.3.0
+- [Pytorch](https://pytorch.org/) == 1.4.0 （other versions are not tested)
 - [PyAV](https://github.com/mikeboers/PyAV) >= 6.2.0
 - [yacs](https://github.com/rbgirshick/yacs)
 - [OpenCV](https://opencv.org/)
@@ -22,7 +22,8 @@ conda activate alphaction
 
 # install pytorch with the same cuda version as in your environment
 cuda_version=$(nvcc --version | grep -oP '(?<=release )[\d\.]*?(?=,)')
-conda install pytorch torchvision cudatoolkit=$cuda_version -c pytorch
+conda install pytorch torchvision cudatoolkit=$cuda_version -c pytorch=1.4.0
+# you should check manually if you successfully install pytorch here, there may be no such package for some cuda versions.
 
 conda install av -c conda-forge
 conda install cython
