@@ -22,7 +22,7 @@ conda activate alphaction
 
 # install pytorch with the same cuda version as in your environment
 cuda_version=$(nvcc --version | grep -oP '(?<=release )[\d\.]*?(?=,)')
-conda install pytorch torchvision cudatoolkit=$cuda_version -c pytorch=1.4.0
+conda install pytorch=1.4.0 torchvision cudatoolkit=$cuda_version -c pytorch
 # you should check manually if you successfully install pytorch here, there may be no such package for some cuda versions.
 
 conda install av -c conda-forge
